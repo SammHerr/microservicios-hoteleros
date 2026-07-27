@@ -1,0 +1,364 @@
+services:
+
+  # =========================================================
+  # BASE DE DATOS DE HOTEL-SERVICE
+  # =========================================================
+  hotel-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hotel_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5433:5432"
+    volumes:
+      - hotel-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hotel_service_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # BASE DE DATOS DE AVAILABILITY-SERVICE
+  # =========================================================
+  availability-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: availability_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5434:5432"
+    volumes:
+      - availability-db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d availability_service_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # BASE DE DATOS DE RESERVATION-SERVICE
+  # =========================================================
+  reservation-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reservation_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5435:5432"
+    volumes:
+      - reservation-db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d reservation_service_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # BASE DE DATOS DE PAYMENT-SERVICE
+  # =========================================================
+  payment-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payment_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5436:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d payment_service_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # BASE DE DATOS DE CONFIRMATION-SERVICE
+  # =========================================================
+  confirmation-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: confirmation_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5437:5432"
+    volumes:
+      - confirmation-db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d confirmation_service_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # BASE DE DATOS DE CALENDAR-SERVICE
+  # =========================================================
+  calendar-db:
+    image: postgres:18.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: calendar_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: samuel
+    ports:
+      - "5438:5432"
+    volumes:
+      - calendar-db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d calendar_service_db"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # HOTEL-SERVICE
+  # =========================================================
+  hotel-service:
+    build:
+      context: ./hotel-service
+      dockerfile: Dockerfile
+    image: hotel-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://hotel-db:5432/hotel_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8081:8081"
+    depends_on:
+      hotel-db:
+        condition: service_healthy
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # AVAILABILITY-SERVICE
+  # =========================================================
+  availability-service:
+    build:
+      context: ./availability-service
+      dockerfile: Dockerfile
+    image: availability-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://availability-db:5432/availability_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8082:8082"
+    depends_on:
+      availability-db:
+        condition: service_healthy
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # RESERVATION-SERVICE
+  # =========================================================
+  reservation-service:
+    build:
+      context: ./reservation-service
+      dockerfile: Dockerfile
+    image: reservation-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://reservation-db:5432/reservation_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+
+      # Comunicación interna con availability-service
+      AVAILABILITY_SERVICE_URL: http://availability-service:8082
+    ports:
+      - "8083:8083"
+    depends_on:
+      reservation-db:
+        condition: service_healthy
+      availability-service:
+        condition: service_started
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # PAYMENT-SERVICE
+  # =========================================================
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    image: payment-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:postgresql://payment-db:5432/payment_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8084:8084"
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # CONFIRMATION-SERVICE
+  # =========================================================
+  confirmation-service:
+    build:
+      context: ./confirmation-service
+      dockerfile: Dockerfile
+    image: confirmation-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:postgresql://confirmation-db:5432/confirmation_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8085:8085"
+    depends_on:
+      confirmation-db:
+        condition: service_healthy
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # CALENDAR-SERVICE
+  # =========================================================
+  calendar-service:
+    build:
+      context: ./calendar-service
+      dockerfile: Dockerfile
+    image: calendar-service:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:postgresql://calendar-db:5432/calendar_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: samuel
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    ports:
+      - "8086:8086"
+    depends_on:
+      calendar-db:
+        condition: service_healthy
+    networks:
+      - hotel-platform-network
+
+
+  # =========================================================
+  # API GATEWAY
+  # =========================================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: api-gateway:latest
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+
+      HOTEL_SERVICE_URL: http://hotel-service:8081
+      AVAILABILITY_SERVICE_URL: http://availability-service:8082
+      RESERVATION_SERVICE_URL: http://reservation-service:8083
+      PAYMENT_SERVICE_URL: http://payment-service:8084
+      CONFIRMATION_SERVICE_URL: http://confirmation-service:8085
+      CALENDAR_SERVICE_URL: http://calendar-service:8086
+    ports:
+      - "8080:8080"
+    depends_on:
+      - hotel-service
+      - availability-service
+      - reservation-service
+      - payment-service
+      - confirmation-service
+      - calendar-service
+    networks:
+      - hotel-platform-network
+
+
+# =========================================================
+# VOLÚMENES PERSISTENTES
+# =========================================================
+volumes:
+  hotel-db-data:
+  availability-db-data:
+  reservation-db-data:
+  payment-db-data:
+  confirmation-db-data:
+  calendar-db-data:
+
+
+# =========================================================
+# RED INTERNA DE LA PLATAFORMA
+# =========================================================
+networks:
+  hotel-platform-network:
+    driver: bridge
