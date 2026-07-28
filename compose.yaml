@@ -279,6 +279,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: samuel
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      PAYMENT_SERVICE_URL: http://payment-service:8084
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8085:8085"
     depends_on:
@@ -304,9 +306,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: samuel
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      RESERVATION_SERVICE_URL: http://reservation-service:8083
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8086:8086"
     depends_on:
+      
       calendar-db:
         condition: service_healthy
     networks:
